@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OrangeHRM Open-Source API Suite — Live</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1: #fcfcfb;
+    --plane: #f9f9f7;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --baseline: #c3c2b7;
+    --border: rgba(11,11,11,0.10);
+    --good: #0ca30c;
+    --warning: #fab219;
+    --critical: #d03b3b;
+    --bar: #2a78d6;
+    --track: #e8e7e1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --surface-1: #1a1a19;
+      --plane: #0d0d0d;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --muted: #898781;
+      --grid: #2c2c2a;
+      --baseline: #383835;
+      --border: rgba(255,255,255,0.10);
+      --bar: #3987e5;
+      --track: #2c2c2a;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1: #1a1a19;
+    --plane: #0d0d0d;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --baseline: #383835;
+    --border: rgba(255,255,255,0.10);
+    --bar: #3987e5;
+    --track: #2c2c2a;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--plane);
+    color: var(--text-primary);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding: 20px 16px 40px;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; margin-bottom: 18px; }
+  h1 { font-size: 19px; margin: 0; font-weight: 640; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 12.5px; }
+  .spacer { flex: 1 1 auto; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 4px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
+    border: 1px solid var(--border); background: var(--surface-1);
+  }
+  .run {
+    display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+    background: var(--text-primary); color: var(--surface-1); border: 1px solid transparent;
+    border-radius: 999px; padding: 5px 14px; font: inherit; font-size: 12.5px; font-weight: 640;
+  }
+  .run:hover { opacity: .9; }
+  .run[disabled] { cursor: default; background: var(--surface-1); color: var(--muted);
+                   border-color: var(--border); font-weight: 500; }
+  .stop {
+    display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+    background: var(--surface-1); color: var(--text-primary);
+    border: 1px solid var(--baseline); border-radius: 999px;
+    padding: 5px 14px; font: inherit; font-size: 12.5px; font-weight: 640;
+  }
+  .stop:hover { border-color: var(--critical); color: var(--critical); }
+  .stop[disabled] { cursor: default; color: var(--muted); border-color: var(--border); font-weight: 500; }
+  button.pill { cursor: pointer; color: var(--text-secondary); font-family: inherit; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+  .pill.running .dot { background: var(--good); animation: pulse 1.4s ease-in-out infinite; }
+  .pill.finishing .dot { background: var(--warning); }
+  .pill.stalled .dot { background: var(--critical); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .tile .k { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .tile .v { font-size: 26px; font-weight: 620; margin-top: 3px; letter-spacing: -0.02em; }
+  .tile .v small { font-size: 14px; font-weight: 500; color: var(--text-secondary); letter-spacing: 0; }
+  .tile .n { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+  .v.good { color: var(--good); } .v.bad { color: var(--critical); } .v.warn { color: #9a6c00; }
+  :root[data-theme="dark"] .v.warn, :root:not([data-theme="light"]) .v.warn { color: var(--warning); }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .v.warn { color: #9a6c00; } }
+
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+  .card h2 { font-size: 13px; margin: 0 0 3px; font-weight: 620; }
+  .card .cap { font-size: 12px; color: var(--muted); margin: 0 0 14px; }
+
+  /* stacked progress bar — 2px surface gap between segments */
+  .stack { display: flex; height: 22px; border-radius: 4px; overflow: hidden; background: var(--track); gap: 2px; }
+  .seg { height: 100%; transition: width .35s ease; }
+  .seg.passed { background: var(--good); }
+  .seg.failed { background: var(--critical); }
+  .seg.skipped { background: var(--warning); }
+  .seg:first-child { border-radius: 4px 0 0 4px; }
+  .seg:last-child { border-radius: 0 4px 4px 0; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; font-size: 12.5px; color: var(--text-secondary); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+  .sw.passed { background: var(--good); } .sw.failed { background: var(--critical); }
+  .sw.skipped { background: var(--warning); } .sw.remaining { background: var(--track); border: 1px solid var(--baseline); }
+
+  .cols { display: grid; grid-template-columns: 1.35fr 1fr; gap: 14px; align-items: start; }
+  @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+
+  /* module rows */
+  .mod { display: grid; grid-template-columns: 170px 1fr 66px; gap: 10px; align-items: center; margin-bottom: 7px; font-size: 12.5px; }
+  .mod .lbl { color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mod .lbl.active { color: var(--text-primary); font-weight: 620; }
+  .mod .cnt { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .mod .stack { height: 14px; }
+  @media (max-width: 560px) { .mod { grid-template-columns: 110px 1fr 58px; } }
+
+  /* live feed */
+  .feed { max-height: 420px; overflow-y: auto; margin: -4px -4px 0; padding: 0 4px; }
+  .row { display: flex; gap: 9px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--grid); font-size: 12.5px; }
+  .row:last-child { border-bottom: 0; }
+  .row .nm { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); }
+  .row .ms { color: var(--muted); font-variant-numeric: tabular-nums; flex: none; }
+  .tag { flex: none; font-weight: 700; font-size: 11px; display: inline-flex; gap: 4px; align-items: center; width: 74px; }
+  .tag.passed { color: var(--good); } .tag.failed { color: var(--critical); } .tag.skipped { color: #9a6c00; }
+  :root[data-theme="dark"] .tag.skipped, :root:not([data-theme="light"]) .tag.skipped { color: var(--warning); }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .tag.skipped { color: #9a6c00; } }
+
+  /* slowest-tests bars */
+  .slow { display: grid; grid-template-columns: 1fr 200px 58px; gap: 10px; align-items: center; margin-bottom: 6px; font-size: 12.5px; }
+  .slow .nm { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .slow .track { background: var(--track); border-radius: 4px; height: 12px; }
+  .slow .fill { background: var(--bar); border-radius: 4px; height: 100%; transition: width .35s ease; }
+  .slow .val { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  @media (max-width: 700px) { .slow { grid-template-columns: 1fr 90px 52px; } }
+
+  .fail { border-left: 3px solid var(--critical); padding: 8px 0 8px 11px; margin-bottom: 9px; font-size: 12.5px; }
+  .fail .msg { color: var(--text-secondary); margin-top: 3px; word-break: break-word; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--grid); }
+  th { color: var(--muted); font-weight: 600; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  details summary { cursor: pointer; color: var(--text-secondary); font-size: 12.5px; margin-top: 12px; }
+
+  .empty { color: var(--muted); font-size: 12.5px; padding: 8px 0; }
+
+  .runs { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
+  .runbtn {
+    display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 11px; font: inherit; font-size: 12.5px; color: var(--text-secondary);
+  }
+  .runbtn[aria-pressed="true"] { border-color: var(--baseline); color: var(--text-primary); font-weight: 600; }
+  .runbtn .dot { width: 7px; height: 7px; }
+  .runbtn.alive .dot { background: var(--good); }
+  /* The console reads as a terminal in both themes — a deliberate constant,
+     not an unthemed oversight. */
+  .term {
+    background: #1a1a19; color: #c3c2b7; border-radius: 8px; border: 1px solid var(--border);
+    padding: 10px 12px; height: 220px; overflow-y: auto; overflow-x: auto;
+    font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    white-space: pre; tab-size: 4;
+  }
+  .term div { min-width: 0; }
+  .term .pass { color: #39c739; }
+  .term .fail { color: #ff7b7b; }
+  .term .skip { color: #fab219; }
+  .term .dim  { color: #6f6e69; }
+  .term .hi   { color: #ffffff; font-weight: 600; }
+  .termbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 10px; font-size: 12px; color: var(--muted); }
+  .termbar .spacer { flex: 1 1 auto; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+  .seg button {
+    background: var(--surface-1); border: 0; border-right: 1px solid var(--border);
+    padding: 4px 11px; font: inherit; font-size: 12px; color: var(--text-secondary); cursor: pointer;
+  }
+  .seg button:last-child { border-right: 0; }
+  .seg button[aria-pressed="true"] { background: var(--track); color: var(--text-primary); font-weight: 600; }
+  .termbar label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-secondary); }
+  .dl {
+    display: inline-flex; align-items: center; gap: 9px; text-decoration: none;
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+    padding: 9px 13px; color: var(--text-primary); font-size: 12.5px; font-weight: 600;
+  }
+  .dl:hover { border-color: var(--baseline); }
+  .dl[aria-disabled="true"] { opacity: .55; pointer-events: none; font-weight: 500; color: var(--text-secondary); }
+  .dl .ic { font-size: 14px; line-height: 1; }
+  .dl .meta { font-weight: 400; color: var(--text-secondary); }
+  .report { display: flex; flex-wrap: wrap; gap: 11px; align-items: center; }
+  .report .warn { font-size: 12.5px; color: var(--text-secondary); flex: 1 1 260px; min-width: 0; }
+  .note { background: var(--surface-1); border: 1px solid var(--border); border-left: 3px solid var(--warning);
+          border-radius: 8px; padding: 10px 13px; font-size: 12.5px; color: var(--text-secondary); margin-bottom: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>OrangeHRM API Suite</h1>
+    <span class="sub" id="host">59ostfs-os-kord.orangehrm.com</span>
+    <span class="spacer"></span>
+    <button class="run" id="run" type="button">▶ Run suite</button>
+    <button class="stop" id="stop" type="button" disabled>■ Stop</button>
+    <span class="pill" id="state"><span class="dot"></span><span id="stateText">connecting…</span></span>
+    <button class="pill" id="theme" type="button" title="Switch theme">Theme</button>
+  </header>
+
+  <div class="note" id="note" hidden></div>
+  <div class="runs" id="runs"></div>
+  <div class="tiles" id="tiles"></div>
+
+  <div class="card">
+    <h2>Suite progress</h2>
+    <p class="cap" id="progressCap">—</p>
+    <div class="stack" id="overall" role="img" aria-label="Suite progress"></div>
+    <div class="legend">
+      <span><i class="sw passed"></i> Passed <b id="lgPassed">0</b></span>
+      <span><i class="sw failed"></i> Failed <b id="lgFailed">0</b></span>
+      <span><i class="sw skipped"></i> Skipped <b id="lgSkipped">0</b></span>
+      <span><i class="sw remaining"></i> Not yet run <b id="lgRemaining">0</b></span>
+    </div>
+  </div>
+
+  <div class="cols">
+    <div class="card">
+      <h2>Modules</h2>
+      <p class="cap">Tests completed per suite in testng.xml order</p>
+      <div id="modules"></div>
+      <details>
+        <summary>Table view</summary>
+        <table id="modTable"><thead><tr><th>Module</th><th class="n">Passed</th><th class="n">Failed</th><th class="n">Skipped</th><th class="n">Of</th><th class="n">Time</th></tr></thead><tbody></tbody></table>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2>Live feed</h2>
+      <p class="cap">Most recent completions first</p>
+      <div class="feed" id="feed"></div>
+    </div>
+  </div>
+
+  <div class="card" id="failCard" hidden>
+    <h2>Failures</h2>
+    <p class="cap">Tests that failed in this run</p>
+    <div id="failures"></div>
+  </div>
+
+  <div class="card">
+    <h2>Console</h2>
+    <p class="cap" id="termCap">—</p>
+    <div class="termbar">
+      <span class="seg">
+        <button type="button" id="vTests" aria-pressed="true">Tests</button>
+        <button type="button" id="vMaven" aria-pressed="false">Maven</button>
+      </span>
+      <span id="termSrc"></span>
+      <span class="spacer"></span>
+      <label><input type="checkbox" id="follow" checked> Follow output</label>
+    </div>
+    <div class="term" id="term"></div>
+  </div>
+
+  <div class="card">
+    <h2>Slowest tests</h2>
+    <p class="cap">Longest-running tests in this run, in seconds</p>
+    <div id="slowest"></div>
+  </div>
+
+  <div class="card">
+    <h2>PDF report</h2>
+    <p class="cap">Written by the suite at the end of each run</p>
+    <div class="report">
+      <a class="dl" id="dl" href="/report.pdf" download>
+        <span class="ic">⤓</span><span id="dlText">Download PDF</span>
+      </a>
+      <span class="warn" id="dlWarn"></span>
+    </div>
+  </div>
+
+  <p class="sub" id="footer">—</p>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const ICON = { passed: "✓", failed: "✕", skipped: "—" };
+let selected = new URLSearchParams(location.search).get("run");
+
+function secs(s) {
+  if (s == null) return "—";
+  s = Math.round(s);
+  const m = Math.floor(s / 60);
+  return m ? `${m}m ${String(s % 60).padStart(2, "0")}s` : `${s}s`;
+}
+function esc(t) {
+  return String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+function segments(el, d, total, title) {
+  const pct = n => total ? (n / total * 100) : 0;
+  el.innerHTML = ["passed", "failed", "skipped"]
+    .filter(k => d[k] > 0)
+    .map(k => `<div class="seg ${k}" style="width:${pct(d[k])}%" title="${k}: ${d[k]}"></div>`)
+    .join("");
+  if (title) el.setAttribute("aria-label", title);
+}
+
+function render(s) {
+  const c = s.counts;
+  const stateLabel = { running: "Running", stalled: "Stalled", finishing: "Wrapping up", idle: "Not running" }[s.state];
+  $("state").className = "pill " + s.state;
+  $("stateText").textContent = s.state === "stalled"
+    ? `Stalled — nothing for ${secs(s.idle)}` : stateLabel;
+
+  const live = (s.runs || []).filter(r => r.alive);
+  $("runs").innerHTML = (s.runs || []).length > 1 ? s.runs.map(r =>
+    `<button class="runbtn ${r.alive ? "alive" : ""}" aria-pressed="${r.jvm === s.jvm}" data-run="${r.jvm}">
+       <span class="dot"></span>JVM ${r.jvm} · ${r.count} test${r.count === 1 ? "" : "s"} · ${new Date(r.start).toLocaleTimeString()}${r.alive ? "" : " · finished"}</button>`).join("") : "";
+  document.querySelectorAll(".runbtn").forEach(b => b.onclick = () => { selected = b.dataset.run; poll(); });
+
+  const note = $("note");
+  // A JVM can be alive and yet be an orphan from an earlier run — alive alone
+  // does not mean executing, so split the two before saying anything.
+  const stale = r => s.generated - r.last > 120000;
+  const activeRuns = live.filter(r => !stale(r));
+  const orphanRuns = live.filter(stale);
+  if (activeRuns.length > 1) {
+    note.hidden = false;
+    note.textContent = `${activeRuns.length} runs are executing against the same instance at once (JVM ${activeRuns.map(r => r.jvm).join(", ")}). They share test data, so results from either can be affected.`;
+  } else if (s.state === "stalled") {
+    note.hidden = false;
+    note.textContent = `This run's JVM is alive but has written no result for ${secs(s.idle)}. It is most likely blocked on a request rather than progressing.`;
+  } else if (orphanRuns.length) {
+    note.hidden = false;
+    note.textContent = `${orphanRuns.length} JVM${orphanRuns.length === 1 ? "" : "s"} from an earlier run ${orphanRuns.length === 1 ? "is" : "are"} still alive but idle (JVM ${orphanRuns.map(r => r.jvm).join(", ")}) — wedged, not running. Nothing in this view depends on ${orphanRuns.length === 1 ? "it" : "them"}.`;
+  } else {
+    note.hidden = true;
+  }
+
+  $("tiles").innerHTML = `
+    <div class="tile"><div class="k">Completed</div><div class="v">${s.done}<small> / ${s.expectedTotal}</small></div>
+      <div class="n">${s.expectedTotal ? Math.round(s.done / s.expectedTotal * 100) : 0}% of the suite</div></div>
+    <div class="tile"><div class="k">Passed</div><div class="v good">${c.passed}</div>
+      <div class="n">${s.done ? s.passRate.toFixed(1) : "0.0"}% pass rate</div></div>
+    <div class="tile"><div class="k">Failed</div><div class="v ${c.failed ? "bad" : ""}">${c.failed}</div>
+      <div class="n">${c.failed ? "needs a look" : "none so far"}</div></div>
+    <div class="tile"><div class="k">Skipped</div><div class="v ${c.skipped ? "warn" : ""}">${c.skipped}</div>
+      <div class="n">${c.skipped ? "did not run" : "none so far"}</div></div>
+    <div class="tile"><div class="k">Elapsed</div><div class="v">${secs(s.elapsed)}</div>
+      <div class="n">${s.rate ? s.rate.toFixed(1) + " tests/min" : "—"}</div></div>
+    <div class="tile"><div class="k">${s.state === "running" ? "Est. remaining" : "Remaining"}</div>
+      <div class="v">${s.state === "running" ? secs(s.eta) : s.remaining}</div>
+      <div class="n">${s.state === "running" ? s.remaining + " tests to go" : "tests not run"}</div></div>`;
+
+  segments($("overall"), c, s.expectedTotal || s.done, `${c.passed} passed, ${c.failed} failed, ${c.skipped} skipped of ${s.expectedTotal}`);
+  $("lgPassed").textContent = c.passed;
+  $("lgFailed").textContent = c.failed;
+  $("lgSkipped").textContent = c.skipped;
+  $("lgRemaining").textContent = s.remaining;
+  $("progressCap").textContent = s.lastCompleted
+    ? "Last completed: " + s.lastCompleted
+    : (s.state === "idle" ? "No run in progress — showing the most recent run." : "Waiting for the first result…");
+
+  const active = s.suites.filter(m => m.passed + m.failed + m.skipped > 0).pop();
+  $("modules").innerHTML = s.suites.map(m => {
+    const done = m.passed + m.failed + m.skipped;
+    const isActive = (s.state === "running" || s.state === "stalled") && active && m.name === active.name;
+    return `<div class="mod">
+      <div class="lbl ${isActive ? "active" : ""}" title="${esc(m.name)}">${esc(m.name.replace(/^\d+-/, ""))}</div>
+      <div class="stack" data-m="${esc(m.name)}" data-p="${m.passed}" data-f="${m.failed}" data-s="${m.skipped}" data-e="${m.expected}"></div>
+      <div class="cnt">${done}/${m.expected}</div></div>`;
+  }).join("");
+  document.querySelectorAll(".mod .stack").forEach(el => {
+    segments(el, { passed: +el.dataset.p, failed: +el.dataset.f, skipped: +el.dataset.s }, +el.dataset.e,
+      `${el.dataset.m}: ${el.dataset.p} passed, ${el.dataset.f} failed, ${el.dataset.s} skipped of ${el.dataset.e}`);
+  });
+
+  $("modTable").tBodies[0].innerHTML = s.suites.map(m =>
+    `<tr><td>${esc(m.name)}</td><td class="n">${m.passed}</td><td class="n">${m.failed}</td><td class="n">${m.skipped}</td><td class="n">${m.expected}</td><td class="n">${(m.duration / 1000).toFixed(1)}s</td></tr>`).join("");
+
+  $("feed").innerHTML = s.recent.length ? s.recent.map(r =>
+    `<div class="row"><span class="tag ${r.status}">${ICON[r.status] || "?"} ${r.status}</span>
+      <span class="nm" title="${esc(r.name)}">${esc(r.name)}</span>
+      <span class="ms">${(r.duration / 1000).toFixed(1)}s</span></div>`).join("")
+    : `<p class="empty">No results yet.</p>`;
+
+  $("failCard").hidden = s.failures.length === 0;
+  $("failures").innerHTML = s.failures.map(f =>
+    `<div class="fail"><b>${esc(f.name)}</b><div class="msg">${esc(f.message || "no message recorded")}</div>
+      <div class="msg">${esc(f.cls)}.${esc(f.method)}</div></div>`).join("");
+
+  const max = Math.max(1, ...s.slowest.map(r => r.duration));
+  $("slowest").innerHTML = s.slowest.length ? s.slowest.map(r =>
+    `<div class="slow"><div class="nm" title="${esc(r.name)}">${esc(r.name)}</div>
+      <div class="track"><div class="fill" style="width:${r.duration / max * 100}%" title="${(r.duration / 1000).toFixed(2)}s"></div></div>
+      <div class="val">${(r.duration / 1000).toFixed(1)}s</div></div>`).join("")
+    : `<p class="empty">No results yet.</p>`;
+
+  paintRunButton(s);
+
+  const rep = s.report || { exists: false };
+  const dl = $("dl");
+  if (!rep.exists) {
+    dl.setAttribute("aria-disabled", "true");
+    $("dlText").textContent = "No PDF yet";
+    $("dlWarn").textContent = "The suite writes the report after its last test and cleanup finish.";
+  } else {
+    dl.removeAttribute("aria-disabled");
+    const kb = Math.round(rep.size / 1024);
+    $("dlText").innerHTML = `Download PDF <span class="meta">· ${kb} KB · ${new Date(rep.mtime).toLocaleString()}</span>`;
+    if (s.state === "running") {
+      $("dlWarn").textContent = "This is the previous run's report — the one in progress overwrites it when it finishes.";
+    } else if (rep.runJvm && rep.runJvm !== s.jvm) {
+      $("dlWarn").textContent = `This report is from JVM ${rep.runJvm}, not the run shown above. The suite overwrites one file per run, so only the most recent run's PDF survives.`;
+    } else {
+      $("dlWarn").textContent = "";
+    }
+  }
+
+  $("footer").textContent = `Refreshed ${new Date(s.generated).toLocaleTimeString()} · reading ${s.resultsDir}`;
+}
+
+function paintLog(d) {
+  const term = $("term");
+  const follow = $("follow").checked;
+  // Only stick to the bottom when already there, so scrolling back to read
+  // isn't yanked away by the next poll.
+  const atBottom = term.scrollHeight - term.scrollTop - term.clientHeight < 40;
+
+  term.innerHTML = d.lines.length
+    ? d.lines.map(l => {
+        let cls = "";
+        if (/\bFAIL\b|\[ERROR\]|BUILD FAILURE|Tests run:.*Failures: [1-9]/.test(l)) cls = "fail";
+        else if (/\bPASS\b|BUILD SUCCESS/.test(l)) cls = "pass";
+        else if (/\bSKIP\b|\[WARNING\]/.test(l)) cls = "skip";
+        else if (/^=== |^--- /.test(l)) cls = "hi";
+        else if (/^\[INFO\]|^SLF4J:/.test(l)) cls = "dim";
+        return `<div class="${cls}">${esc(l) || "&nbsp;"}</div>`;
+      }).join("")
+    : `<div class="dim">Nothing yet — the console fills as the suite runs.</div>`;
+
+  if (follow && atBottom) term.scrollTop = term.scrollHeight;
+
+  if (d.view === "maven") {
+    $("termSrc").textContent = d.hasConsole ? "target/live-run.log" : "no console for this run";
+    $("termCap").textContent = "Maven's own output — quiet between the first test and the final summary";
+  } else {
+    $("termSrc").textContent = d.hasConsole ? "" : "Maven view needs live-dashboard/run.sh";
+    $("termCap").textContent = "One line per test as it completes";
+  }
+}
+
+let logView = "tests";
+function setView(v) {
+  logView = v;
+  $("vTests").setAttribute("aria-pressed", String(v === "tests"));
+  $("vMaven").setAttribute("aria-pressed", String(v === "maven"));
+  $("term").scrollTop = $("term").scrollHeight;
+  poll();
+}
+$("vTests").onclick = () => setView("tests");
+$("vMaven").onclick = () => setView("maven");
+
+async function poll() {
+  try {
+    const q = selected ? "?run=" + encodeURIComponent(selected) : "";
+    const [status, log] = await Promise.all([
+      fetch("/api/status" + q).then(r => r.json()),
+      fetch("/api/log" + (q ? q + "&" : "?") + "view=" + logView).then(r => r.json()),
+    ]);
+    render(status);
+    paintLog(log);
+  } catch (e) {
+    $("stateText").textContent = "server unreachable";
+    $("state").className = "pill";
+    runBtn.disabled = true;
+    stopBtn.disabled = true;
+  }
+}
+const runBtn = $("run");
+const stopBtn = $("stop");
+let runBusy = false;
+let stopBusy = false;
+
+function paintRunButton(s) {
+  // Both buttons key off live processes, not the display state: after a Stop the view
+  // sits in "Wrapping up" for a grace period, and Run must not stay disabled through it.
+  const procs = s.suiteProcesses || 0;
+  runBtn.disabled = procs > 0 || runBusy || stopBusy;
+  runBtn.textContent = runBusy ? "Starting…" : procs > 0 ? "Running…" : "▶ Run suite";
+
+  // Enabled whenever a suite process exists - including a wedged one, which is
+  // precisely what someone looking at a Stalled run wants to end.
+  stopBtn.disabled = procs === 0 || stopBusy;
+  stopBtn.textContent = stopBusy ? "Stopping…" : "■ Stop";
+  stopBtn.title = procs
+    ? `Stop ${procs} suite process${procs === 1 ? "" : "es"}`
+    : "Nothing to stop";
+}
+
+stopBtn.onclick = async () => {
+  if (!confirm(
+      "Stop the running suite?\n\n"
+      + "The suite's own cleanup runs at the END of a run, so killing it now leaves "
+      + "the records it has already created on the instance.")) return;
+  stopBusy = true;
+  try {
+    const res = await fetch("/api/stop", {
+      method: "POST",
+      headers: { "X-Dashboard-Run": "1" },
+    }).then(r => r.json());
+    $("note").hidden = false;
+    $("note").textContent = res.stopped
+      ? `Stopped ${res.count} process${res.count === 1 ? "" : "es"}: ${res.processes.join(", ")}. `
+        + "Cleanup did not run, so records created by that run are still on the instance."
+      : "Nothing was stopped: " + res.reason;
+  } catch (e) {
+    $("note").hidden = false;
+    $("note").textContent = "Could not reach the dashboard server to stop the run.";
+  }
+  stopBusy = false;
+  poll();
+};
+
+runBtn.onclick = async () => {
+  runBusy = true;
+  paintRunButton({ state: "idle", suiteProcesses: 0 });
+  try {
+    const res = await fetch("/api/run", {
+      method: "POST",
+      headers: { "X-Dashboard-Run": "1" },
+    }).then(r => r.json());
+    if (!res.started) {
+      $("note").hidden = false;
+      $("note").textContent = "Could not start the suite: " + res.reason;
+    }
+  } catch (e) {
+    $("note").hidden = false;
+    $("note").textContent = "Could not reach the dashboard server to start a run.";
+  }
+  // Maven needs a few seconds before its JVM shows up, so hold the button until then.
+  setTimeout(() => { runBusy = false; poll(); }, 6000);
+  poll();
+};
+
+const THEMES = ["system", "light", "dark"];
+let theme = "system";
+try { theme = localStorage.getItem("ohrm-dash-theme") || "system"; } catch (e) {}
+function applyTheme() {
+  if (theme === "system") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", theme);
+  $("theme").textContent = theme === "system" ? "Theme: auto" : "Theme: " + theme;
+  try { localStorage.setItem("ohrm-dash-theme", theme); } catch (e) {}
+}
+$("theme").onclick = () => { theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length]; applyTheme(); };
+applyTheme();
+
+poll();
+setInterval(poll, 2000);
+</script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  OrangeHRM OS - API regression suite.
+
+  Run everything:      mvn test
+  Run one module:      mvn test -Dsurefire.suiteXmlFiles=testng.xml -Dtest=PimTest
+  Point at a host:     mvn test -Dohrm.baseUrl=https://host -Dohrm.username=u -Dohrm.password=p
+-->
+<suite name="OrangeHRM-API-Suite" verbose="1">
+
+    <test name="01-Authentication">
+        <classes><class name="com.orangehrm.api.tests.AuthTest"/></classes>
+    </test>
+
+    <test name="02-Admin">
+        <classes><class name="com.orangehrm.api.tests.AdminTest"/></classes>
+    </test>
+
+    <test name="03-PIM">
+        <classes><class name="com.orangehrm.api.tests.PimTest"/></classes>
+    </test>
+
+    <test name="04-Leave">
+        <classes><class name="com.orangehrm.api.tests.LeaveTest"/></classes>
+    </test>
+
+    <test name="05-Time-and-Attendance">
+        <classes><class name="com.orangehrm.api.tests.TimeAttendanceTest"/></classes>
+    </test>
+
+    <test name="06-Recruitment">
+        <classes><class name="com.orangehrm.api.tests.RecruitmentTest"/></classes>
+    </test>
+
+    <test name="07-Performance">
+        <classes><class name="com.orangehrm.api.tests.PerformanceTest"/></classes>
+    </test>
+
+    <test name="08-Claim">
+        <classes><class name="com.orangehrm.api.tests.ClaimTest"/></classes>
+    </test>
+
+    <test name="09-Buzz">
+        <classes><class name="com.orangehrm.api.tests.BuzzTest"/></classes>
+    </test>
+
+    <test name="10-Dashboard-and-Directory">
+        <classes><class name="com.orangehrm.api.tests.DashboardCoreTest"/></classes>
+    </test>
+
+    <test name="11-Negative-and-Security">
+        <classes><class name="com.orangehrm.api.tests.NegativeSecurityTest"/></classes>
+    </test>
+
+    <test name="12-Employee-Qualifications">
+        <classes><class name="com.orangehrm.api.tests.EmployeeQualificationsTest"/></classes>
+    </test>
+
+    <test name="13-System-Configuration">
+        <classes><class name="com.orangehrm.api.tests.SystemConfigTest"/></classes>
+    </test>
+
+    <test name="14-API-Boundaries">
+        <classes><class name="com.orangehrm.api.tests.ModuleBoundaryTest"/></classes>
+    </test>
+
+</suite>
