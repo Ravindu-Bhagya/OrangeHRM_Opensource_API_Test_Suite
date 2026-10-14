@@ -27,6 +27,10 @@ jobs:
       OHRM_BASE_URL: ${{ secrets.OHRM_BASE_URL }}
       OHRM_USERNAME: ${{ secrets.OHRM_USERNAME }}
       OHRM_PASSWORD: ${{ secrets.OHRM_PASSWORD }}
+      # Email delivery of results; the email step is skipped until these are set
+      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      MAIL_TO: ${{ secrets.MAIL_TO }}
 
     steps:
       - name: Checkout repository
@@ -65,8 +69,12 @@ jobs:
               lines += ["### Failed tests", ""] + [f"- `{n}`" for n in failed]
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
               out.write("\n".join(lines) + "\n")
+          run_url = f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+          os.makedirs('target', exist_ok=True)
+          with open('target/email-body.md', 'w') as out:
+              out.write("\n".join(lines) + f"\n[Open the run on GitHub]({run_url})\n")
           with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
-              out.write(f"total={t}\nbad={f + e}\n")
+              out.write(f"total={t}\nbad={f + e}\npassed={passed}\n")
           PY
 
       - name: Upload test reports
@@ -80,6 +88,22 @@ jobs:
             target/allure-results/
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Email test results
+        if: always() && env.SMTP_PASSWORD != '' && env.MAIL_TO != ''
+        uses: dawidd6/action-send-mail@v22
+        with:
+          server_address: ${{ secrets.SMTP_SERVER || 'smtp.gmail.com' }}
+          server_port: ${{ secrets.SMTP_PORT || '465' }}
+          secure: ${{ (secrets.SMTP_PORT || '465') == '465' }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          from: OrangeHRM API Tests <${{ secrets.SMTP_USERNAME }}>
+          to: ${{ secrets.MAIL_TO }}
+          subject: "[${{ (steps.summary.outputs.total == '0' || steps.summary.outputs.bad != '0') && 'FAILED' || 'PASSED' }}] OrangeHRM API tests: ${{ steps.summary.outputs.passed || 0 }}/${{ steps.summary.outputs.total || 0 }} passed (run #${{ github.run_number }})"
+          body: file://target/email-body.md
+          convert_markdown: true
+          attachments: OrangeHRM-API-TestReport*.pdf   # glob, so a missing PDF does not break the email
 
       # The pom sets testFailureIgnore=true, so Maven exits 0 even when tests fail.
       # Fail the job here (after the reports are uploaded) so failed runs show red.
