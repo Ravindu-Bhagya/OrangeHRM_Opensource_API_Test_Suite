@@ -12,8 +12,9 @@ package com.orangehrm.api.config;
  *   OHRM_ADMIN_CAN_READ_TIME=false OHRM_SALARY_ENCRYPTED_ON_CREATE=true mvn test
  *
  * Observed behaviour:
- *   59ostfs-os-kord    - Admin gets 403 on the /time data endpoints; salary create
- *                        response returns the amount as GCMAES256 ciphertext.
+ *   59ostfs-os-kord    - Admin gets 200 on the /time data endpoints (was 403 until
+ *                        Oct 2026); salary create response returns the amount as
+ *                        GCMAES256 ciphertext.
  *   sec59issue-os-kord - Admin gets 200 on the /time data endpoints; salary create
  *                        response echoes the plain amount.
  */
@@ -32,7 +33,7 @@ public final class InstanceProfile {
 
     /** Admin can read /time projects, customers, project admins and timesheets (200, not 403). */
     public static final boolean ADMIN_CAN_READ_TIME =
-            flag("ohrm.adminCanReadTime", "OHRM_ADMIN_CAN_READ_TIME", !IS_59OSTFS);
+            flag("ohrm.adminCanReadTime", "OHRM_ADMIN_CAN_READ_TIME", true);
 
     /** POST salary-components returns data.amount encrypted rather than as submitted. */
     public static final boolean SALARY_ENCRYPTED_ON_CREATE =
