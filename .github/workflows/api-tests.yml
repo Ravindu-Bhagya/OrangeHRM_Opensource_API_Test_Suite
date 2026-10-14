@@ -2,9 +2,8 @@ name: OrangeHRM API Automation Tests
 
 on:
   schedule:
-    # Every 6 hours, anchored on 1:00 PM Sri Lanka time (cron is UTC):
-    # 01:30, 07:30, 13:30, 19:30 UTC = 07:00, 13:00, 19:00, 01:00 Sri Lanka
-    - cron: '30 1,7,13,19 * * *'
+    # Every day at 1:00 AM Sri Lanka time (19:30 UTC the previous day; cron is UTC)
+    - cron: '30 19 * * *'
 
   workflow_dispatch:
 
