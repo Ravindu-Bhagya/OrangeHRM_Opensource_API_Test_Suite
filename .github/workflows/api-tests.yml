@@ -46,36 +46,18 @@ jobs:
       - name: Run API tests
         run: mvn -B clean test
 
-      - name: Summarise results
+      - name: Set up Python
+        if: always()
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Build result sheet and summary
         id: summary
         if: always()
         run: |
-          python3 - <<'PY'
-          import glob, os, xml.etree.ElementTree as ET
-          t = f = e = s = 0
-          failed = []
-          for path in glob.glob('target/surefire-reports/TEST-*.xml'):
-              r = ET.parse(path).getroot()
-              t += int(r.get('tests', 0)); f += int(r.get('failures', 0))
-              e += int(r.get('errors', 0)); s += int(r.get('skipped', 0))
-              for tc in r.iter('testcase'):
-                  if tc.find('failure') is not None or tc.find('error') is not None:
-                      failed.append(f"{tc.get('classname', '').split('.')[-1]}.{tc.get('name')}")
-          passed = t - f - e - s
-          lines = ["## OrangeHRM API Test Results", "",
-                   "| Total | Passed | Failed | Errors | Skipped |", "|---|---|---|---|---|",
-                   f"| {t} | {passed} | {f} | {e} | {s} |", ""]
-          if failed:
-              lines += ["### Failed tests", ""] + [f"- `{n}`" for n in failed]
-          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
-              out.write("\n".join(lines) + "\n")
-          run_url = f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
-          os.makedirs('target', exist_ok=True)
-          with open('target/email-body.md', 'w') as out:
-              out.write("\n".join(lines) + f"\n[Open the run on GitHub]({run_url})\n")
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
-              out.write(f"total={t}\nbad={f + e}\npassed={passed}\n")
-          PY
+          pip install --quiet openpyxl
+          python .github/scripts/build_report.py target/allure-results target
 
       - name: Upload test reports
         if: always()
@@ -84,6 +66,7 @@ jobs:
           name: OrangeHRM-API-Test-Reports-${{ github.run_number }}
           path: |
             OrangeHRM-API-TestReport.pdf
+            target/OrangeHRM-API-Test-Results.xlsx
             target/surefire-reports/
             target/allure-results/
           if-no-files-found: warn
@@ -101,9 +84,9 @@ jobs:
           from: OrangeHRM API Tests <${{ secrets.SMTP_USERNAME }}>
           to: ${{ secrets.MAIL_TO }}
           subject: "[${{ (steps.summary.outputs.total == '0' || steps.summary.outputs.bad != '0') && 'FAILED' || 'PASSED' }}] OrangeHRM API tests: ${{ steps.summary.outputs.passed || 0 }}/${{ steps.summary.outputs.total || 0 }} passed (run #${{ github.run_number }})"
-          body: file://target/email-body.md
-          convert_markdown: true
-          attachments: OrangeHRM-API-TestReport*.pdf   # glob, so a missing PDF does not break the email
+          html_body: file://target/email-body.html
+          # globs, so a missing file does not break the email
+          attachments: target/OrangeHRM-API-Test-Results*.xlsx,OrangeHRM-API-TestReport*.pdf
 
       # The pom sets testFailureIgnore=true, so Maven exits 0 even when tests fail.
       # Fail the job here (after the reports are uploaded) so failed runs show red.
