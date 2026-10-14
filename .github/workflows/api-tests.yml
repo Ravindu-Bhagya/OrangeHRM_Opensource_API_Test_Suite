@@ -2,15 +2,32 @@ name: OrangeHRM API Automation Tests
 
 on:
   schedule:
-    # Every day at 1:00 PM Sri Lanka time (07:30 UTC)
-    - cron: '30 7 * * *'
+    # Every 6 hours, anchored on 1:00 PM Sri Lanka time (cron is UTC):
+    # 01:30, 07:30, 13:30, 19:30 UTC = 07:00, 13:00, 19:00, 01:00 Sri Lanka
+    - cron: '30 1,7,13,19 * * *'
 
   workflow_dispatch:
+
+# Two runs against the same instance would purge each other's QA_AUT_ data,
+# so a new run waits for the previous one instead of overlapping.
+concurrency:
+  group: orangehrm-api-tests
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
   api-tests:
     name: Run API Automation Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      # Optional repo secrets; when unset, Credentials.java falls back to its defaults
+      OHRM_BASE_URL: ${{ secrets.OHRM_BASE_URL }}
+      OHRM_USERNAME: ${{ secrets.OHRM_USERNAME }}
+      OHRM_PASSWORD: ${{ secrets.OHRM_PASSWORD }}
 
     steps:
       - name: Checkout repository
@@ -23,30 +40,52 @@ jobs:
           java-version: '21'
           cache: maven
 
-      - name: Verify Java and Maven
-        run: |
-          java -version
-          mvn -version
-
       - name: Run API tests
         run: mvn -B clean test
 
-      - name: List generated reports
+      - name: Summarise results
+        id: summary
         if: always()
         run: |
-          echo "Checking generated test reports..."
-          find target -maxdepth 3 -type f \
-            \( -path '*/surefire-reports/*' \
-            -o -path '*/allure-results/*' \) \
-            -print 2>/dev/null || true
+          python3 - <<'PY'
+          import glob, os, xml.etree.ElementTree as ET
+          t = f = e = s = 0
+          failed = []
+          for path in glob.glob('target/surefire-reports/TEST-*.xml'):
+              r = ET.parse(path).getroot()
+              t += int(r.get('tests', 0)); f += int(r.get('failures', 0))
+              e += int(r.get('errors', 0)); s += int(r.get('skipped', 0))
+              for tc in r.iter('testcase'):
+                  if tc.find('failure') is not None or tc.find('error') is not None:
+                      failed.append(f"{tc.get('classname', '').split('.')[-1]}.{tc.get('name')}")
+          passed = t - f - e - s
+          lines = ["## OrangeHRM API Test Results", "",
+                   "| Total | Passed | Failed | Errors | Skipped |", "|---|---|---|---|---|",
+                   f"| {t} | {passed} | {f} | {e} | {s} |", ""]
+          if failed:
+              lines += ["### Failed tests", ""] + [f"- `{n}`" for n in failed]
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
+              out.write("\n".join(lines) + "\n")
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write(f"total={t}\nbad={f + e}\n")
+          PY
 
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v5
         with:
-          name: OrangeHRM-API-Test-Reports
+          name: OrangeHRM-API-Test-Reports-${{ github.run_number }}
           path: |
+            OrangeHRM-API-TestReport.pdf
             target/surefire-reports/
             target/allure-results/
           if-no-files-found: warn
           retention-days: 14
+
+      # The pom sets testFailureIgnore=true, so Maven exits 0 even when tests fail.
+      # Fail the job here (after the reports are uploaded) so failed runs show red.
+      - name: Fail job on test failures
+        if: always() && (steps.summary.outputs.total == '0' || steps.summary.outputs.bad != '0')
+        run: |
+          echo "::error::${{ steps.summary.outputs.bad }} failing test(s) out of ${{ steps.summary.outputs.total }} — see the run summary and the report artifact"
+          exit 1
