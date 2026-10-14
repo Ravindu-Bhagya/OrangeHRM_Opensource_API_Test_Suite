@@ -26,8 +26,9 @@ public final class Credentials {
     /* ----------------------------------------------------------------- */
 
     public static final String BASE_HOST =
-            cfg("ohrm.baseUrl", "OHRM_BASE_URL", "https://sec59issue-os-kord.orangehrm.com");
+            cfg("ohrm.baseUrl", "OHRM_BASE_URL", "https://59ostfs-os-kord.orangehrm.com");
 //previous instance = https://59ostfs-os-kord.orangehrm.com
+//tested instance = https://sec59issue-os-kord.orangehrm.com
     /** Everything the OrangeHRM SPA calls lives under this prefix. */
     public static final String WEB_BASE = BASE_HOST + "/web/index.php";
     public static final String API_BASE = WEB_BASE + "/api/v2";
